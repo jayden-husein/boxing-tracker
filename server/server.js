@@ -11,6 +11,21 @@ app.get("/sessions", (req, res) => {
   res.json([sesh1, sesh2]);
 });
 
+function fakeDbQuery() {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => reject(new Error("db is down :(")), 1000);
+  });
+}
+
+app.get("/broken", async (req, res) => {
+  try {
+    const fakeQuery = await fakeDbQuery();
+    res.send(fakeQuery);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 app.listen(3000, (err) => {
   if (err) {
     console.error("failed to start:", err.message);
