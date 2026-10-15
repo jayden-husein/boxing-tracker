@@ -2,8 +2,6 @@
 
 A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
 
-Built as a learning project and portfolio piece for a DALI Lab application. Every design decision here is deliberate and documented below.
-
 > **Status:** in progress. Scaffolding, Express routes, and the initial schema design are done. Postgres setup and the three core features are being built. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
 
 ---
