@@ -20,5 +20,14 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": ["Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)"],
+    "deny": [
+      "Edit(/client/**)",
+      "Edit(/server/**)",
+      "Edit(/.env*)",
+      "Edit(/.claude/**)"
+    ]
   }
 }

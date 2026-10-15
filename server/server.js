@@ -17,14 +17,15 @@ function fakeDbQuery() {
   });
 }
 
-app.get("/broken", async (req, res) => {
-  try {
-    const fakeQuery = await fakeDbQuery();
-    res.send(fakeQuery);
-  } catch (err) {
-    res.status(500).send(err.message);
-  }
-});
+// app.get("/broken", async (req, res) => {
+//   try {
+//     const fakeQuery = await fakeDbQuery();
+//     res.send(fakeQuery);
+//   } catch (err) {
+//     res.status(500).json({ error: "db is down srry :(" });
+//     console.error(err.message);
+//   }
+// });
 
 app.listen(3000, (err) => {
   if (err) {
