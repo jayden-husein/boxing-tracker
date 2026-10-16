@@ -1,6 +1,6 @@
 *.code-workspace
 node_modules/
-.env
+*.env
 
 graphify-out/
 SPEC.md
