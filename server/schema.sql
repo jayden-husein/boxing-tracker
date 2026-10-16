@@ -1,3 +1,4 @@
+-- IMPORTANT !!!! REMOVE BEFORE DEPLOYING !!!!!!
 drop table if exists sessions;
 drop table if exists session_types;
 
