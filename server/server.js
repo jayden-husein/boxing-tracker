@@ -1,31 +1,32 @@
 const express = require("express");
 const app = express();
 
-app.get("/ping", (req, res) => {
-  res.json({ message: "pong" });
+require("dotenv").config();
+const { Pool } = require("pg");
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+app.get("/sessions", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `select 
+        sessions.id, 
+        sessions.session_date, 
+        session_types.name as session_type, 
+        sessions.duration_in_mins, 
+        sessions.notes 
+      from 
+        sessions 
+      inner join 
+        session_types 
+      on 
+        sessions.session_type_id = session_types.id 
+        order by sessions.session_date desc`,
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: `Couldn't load session` });
+  }
 });
-
-app.get("/sessions", (req, res) => {
-  const sesh1 = { date: "10/20/2025", type: "Boxing", duration: "20 min" };
-  const sesh2 = { date: "1/1/1111", type: "Muay Thai", duration: "1 hr" };
-  res.json([sesh1, sesh2]);
-});
-
-function fakeDbQuery() {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => reject(new Error("db is down :(")), 1000);
-  });
-}
-
-// app.get("/broken", async (req, res) => {
-//   try {
-//     const fakeQuery = await fakeDbQuery();
-//     res.send(fakeQuery);
-//   } catch (err) {
-//     res.status(500).json({ error: "db is down srry :(" });
-//     console.error(err.message);
-//   }
-// });
 
 app.listen(3000, (err) => {
   if (err) {

@@ -16,5 +16,3 @@ create table sessions (
 );
 
 insert into session_types (name) values ('Boxing'), ('Muay Thai');
-
---  select sessions.session_date, session_types.name as session_type, sessions.duration_in_mins, sessions.notes from sessions inner join session_types on sessions.session_type_id = session_types.id order by sessions.session_date desc;
