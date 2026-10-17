@@ -1,10 +1,13 @@
-GET http://localhost:3000/ping
-
 ###
 GET http://localhost:3000/sessions
 
 ###
-GET http://localhost:3000/broken
+POST http://localhost:3000/sessions
+Content-Type: application/json
 
-### 
-GET http://localhost:3000/nothing
+{
+  "session_date": "2007-07-27",
+  "session_type": "Muay Thai",
+  "duration_in_mins": 60,
+  "notes": "bag work"
+}
