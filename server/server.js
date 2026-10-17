@@ -45,7 +45,26 @@ app.get("/sessions", async (req, res) => {
   }
 });
 
-app.post("/sessions", (req, res) => {
-  console.log(req.body);
-  res.status(201).json(req.body);
+app.post("/sessions", async (req, res) => {
+  try {
+    console.log(req.body);
+    const { session_date, session_type, duration_in_mins, notes } = req.body;
+
+    console.log(session_type);
+
+    const session_type_id = await pool.query(
+      `select 
+        id 
+      from 
+        session_types
+      where 
+        $1 = session_types.name`,
+      [session_type],
+    );
+
+    console.log(session_type_id.rows[0].id);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `Request didn't go through` });
+  }
 });
