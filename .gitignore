@@ -5,3 +5,4 @@ node_modules/
 graphify-out/
 SPEC.md
 .claude/worktrees/
+.vscode
