@@ -2,7 +2,7 @@
 
 A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
 
-> **Status:** in progress. Scaffolding, Express routes, and the initial schema design are done. Postgres setup and the three core features are being built. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
+> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions` are done. `POST /sessions` is a stub, and the client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
 
 ---
 
@@ -52,37 +52,39 @@ boxing-tracker/
 └── README.md
 ```
 
-### Data model (initial draft)
+### Data model (see `server/schema.sql`)
 
 `session_types` (lookup table)
 
 | Column | Type | Why |
 |---|---|---|
-| `id` | serial primary key | unique row identity |
-| `name` | text, unique | "Boxing", "Muay Thai", and later anything else |
+| `id` | integer, `generated always as identity` primary key | unique row identity |
+| `name` | text, not null, unique | "Boxing" and "Muay Thai" are seeded; anything else is an `INSERT` |
 
 `sessions`
 
 | Column | Type | Why |
 |---|---|---|
-| `id` | serial primary key | unique row identity |
-| `date` | `DATE` (`YYYY-MM-DD`) | sorts correctly and aggregates by week/month |
-| `session_type_id` | integer, foreign key → `session_types(id)` | links each session to a type (column name is provisional) |
-| `duration_minutes` | integer | easy to sum and average |
-| `notes` | text | free-form |
+| `id` | integer, `generated always as identity` primary key | unique row identity |
+| `session_date` | `DATE`, not null | the day you trained, not the day you logged it; sorts correctly and aggregates by week/month |
+| `session_type_id` | integer, not null, foreign key → `session_types(id)` | links each session to a type |
+| `duration_in_mins` | integer, not null, `CHECK (> 0)` | easy to sum and average; the database rejects zero or negative durations |
+| `notes` | text, nullable | free-form |
 
 Session type is its own table, not a text column, a `CHECK` constraint, or an `ENUM`. Adding a new type (climbing, general workout, or sublabels like sparring, technique, strength, cardio) is then just an `INSERT`, with no schema change.
 
 No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding it later is a migration, but the complexity saved now is worth more.
 
-### API (planned REST routes)
+### API (REST routes)
 
-| Method | Route | Purpose |
-|---|---|---|
-| GET | `/session-types` | list available session types (for the logger's dropdown) |
-| GET | `/sessions` | list sessions (joined with their type name) |
-| POST | `/sessions` | create a session |
-| POST | `/workouts/generate` | generate a workout via the Anthropic API |
+| Method | Route | Purpose | Status |
+|---|---|---|---|
+| GET | `/session-types` | list available session types (for the logger's dropdown) | planned |
+| GET | `/sessions` | list sessions joined with their type name, newest first, capped at 15 | done |
+| POST | `/sessions` | create a session | stub (logs and echoes the body, no insert yet) |
+| POST | `/workouts/generate` | generate a workout via the Anthropic API | planned |
+
+`GET /sessions` casts `session_date` to text in SQL, because `pg` would otherwise convert a `DATE` into a JS `Date` and the JSON would include a timezone.
 
 ---
 
@@ -133,11 +135,12 @@ npm run dev
 - [x] Project scaffolding (Vite client, Express server, Git, GitHub)
 - [x] Basic Express routes tested with REST Client
 - [x] Initial `sessions` schema designed
+- [x] `schema.sql` and database connection from Express (`pg` Pool via `DATABASE_URL`)
+- [x] `GET /sessions` backed by Postgres
 
 **Core build**
-- [ ] Install and configure Postgres in WSL
-- [ ] `schema.sql` and database connection from Express
-- [ ] `POST /sessions` and `GET /sessions` backed by Postgres
+- [ ] `POST /sessions` backed by Postgres (route exists as a stub)
+- [ ] `GET /session-types`
 - [ ] Session logger form in React
 - [ ] Session history view in React
 - [ ] AI workout generator (server route + UI)
@@ -171,7 +174,7 @@ These are **gated**: nothing here starts until the three core features work end-
 
 ### 5. Smarter AI generation
 - **Why:** a generic workout is less useful than one based on your history.
-- **Approach:** have the server read recent sessions, summarize them, and include that summary in the prompt sent to the Anthropic API. Ask for structured output (e.g. JSON with rounds and drills) so the client can render it reliably. Add basic rate limiting on the generate route so a bug can't burn your API budget.
+- **Approach:** have the server read recent sessions, summarize them, and include that summary in the prompt sent to the Anthropic API. Ask for structured output (e.g. JSON with rounds and drills) so the client can render it reliably. Rate limit the generate route (see item 8) so a bug can't burn your API budget.
 - **Decide first:** how much history is enough context without bloating the prompt? What happens when the API call fails or returns malformed output?
 
 ### 6. Authentication and multi-user support
@@ -184,7 +187,14 @@ These are **gated**: nothing here starts until the three core features work end-
 - **Approach:** add a web app manifest and a service worker (the Vite PWA plugin handles most of the wiring). Cache the app shell, and consider queuing session logs offline and syncing when back online.
 - **Decide first:** what should work offline, and how do you handle sync conflicts?
 
-### 8. Quality and polish
+### 8. Caching, idempotency, and rate limiting
+- **Why:** these protect the API as it grows. Caching saves repeated work, idempotency stops a retried request from creating a duplicate, and rate limiting stops abuse or a client bug from running up cost (especially on the Anthropic call).
+- **Caching approach:** start with HTTP caching headers (`Cache-Control`, `ETag`) on read-only routes like `GET /session-types`, which rarely changes. For `GET /sessions`, an in-memory cache that is cleared on every write is enough at this scale. Redis only if you ever run more than one server instance.
+- **Idempotency approach:** the client generates a unique key per submit and sends it as an `Idempotency-Key` header on `POST /sessions`. Store the key (e.g. a unique column or small table) and return the original response if the same key arrives again. This protects against double-clicks and flaky-network retries.
+- **Rate limiting approach:** middleware such as `express-rate-limit`, with a strict limit on `POST /workouts/generate` and a looser one on the other routes. Return `429` with a `Retry-After` header.
+- **Decide first:** what is safe to cache, and what invalidates it? How long should an idempotency key live? Is a per-IP limit meaningful for a single-user app, and does an in-memory counter survive a restart or a second instance?
+
+### 9. Quality and polish
 - **Input validation** on the server (reject bad dates, negative durations) and matching client-side checks.
 - **Error handling middleware** in Express so failures return consistent JSON.
 - **Automated tests** (e.g. Vitest or Jest with Supertest for routes) once the API stabilizes.
