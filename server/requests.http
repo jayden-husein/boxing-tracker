@@ -4,6 +4,7 @@ GET http://localhost:3000/sessions
 ###
 POST http://localhost:3000/sessions
 Content-Type: application/json
+Connection: close
 
 {
   "session_date": "2007-07-27",
