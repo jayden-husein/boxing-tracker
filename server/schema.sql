@@ -1,7 +1,3 @@
--- IMPORTANT !!!! REMOVE BEFORE DEPLOYING !!!!!!
-drop table if exists sessions;
-drop table if exists session_types;
-
 create table session_types (
   id integer generated always as identity primary key,
   name text not null unique
