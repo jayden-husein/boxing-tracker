@@ -1,2 +1,216 @@
-# boxing-tracker
-Boxing Tracker web app that includes a session logger, session history, and a workout generator 
+# Boxing Tracker
+
+A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
+
+> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions` are done. `POST /sessions` is a stub, and the client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
+
+---
+
+## What it does
+
+Three core features (scope is intentionally capped at three):
+
+1. **Session logger** – record a training session: date, type (boxing, Muay Thai, etc.), duration, and notes.
+2. **Session history** – browse past sessions, newest first.
+3. **AI workout generator** – ask for a workout and get one back, generated server-side through the Anthropic API.
+
+The app is **single-user** for now. Auth is deliberately deferred (see [Design decisions](#design-decisions)).
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Frontend | React (Vite), ESLint, Prettier |
+| Backend | Node.js + Express (REST) |
+| Database | PostgreSQL, accessed with raw SQL via `pg` |
+| AI | Anthropic API, called from the server only |
+| Dev environment | Windows 11, WSL Ubuntu, VS Code, nvm, npm |
+| API testing | REST Client (`.http` files) |
+| Planned hosting | Vercel (frontend), Render (backend + database) |
+
+---
+
+## Architecture
+
+```
+React client  ──HTTP──▶  Express server  ──SQL──▶  PostgreSQL
+                              │
+                              └──HTTPS──▶  Anthropic API
+```
+
+The browser never talks to the database or to Anthropic directly. The Anthropic API key lives only in the server's `.env`, because anything shipped to the browser is visible in DevTools.
+
+### Project layout
+
+```
+boxing-tracker/
+├── client/          # React app (Vite)
+├── server/          # Express API
+├── .gitignore       # node_modules/, .env
+└── README.md
+```
+
+### Data model (see `server/schema.sql`)
+
+`session_types` (lookup table)
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | integer, `generated always as identity` primary key | unique row identity |
+| `name` | text, not null, unique | "Boxing" and "Muay Thai" are seeded; anything else is an `INSERT` |
+
+`sessions`
+
+| Column | Type | Why |
+|---|---|---|
+| `id` | integer, `generated always as identity` primary key | unique row identity |
+| `session_date` | `DATE`, not null | the day you trained, not the day you logged it; sorts correctly and aggregates by week/month |
+| `session_type_id` | integer, not null, foreign key → `session_types(id)` | links each session to a type |
+| `duration_in_mins` | integer, not null, `CHECK (> 0)` | easy to sum and average; the database rejects zero or negative durations |
+| `notes` | text, nullable | free-form |
+
+Session type is its own table, not a text column, a `CHECK` constraint, or an `ENUM`. Adding a new type (climbing, general workout, or sublabels like sparring, technique, strength, cardio) is then just an `INSERT`, with no schema change.
+
+No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding it later is a migration, but the complexity saved now is worth more.
+
+### API (REST routes)
+
+| Method | Route | Purpose | Status |
+|---|---|---|---|
+| GET | `/session-types` | list available session types (for the logger's dropdown) | planned |
+| GET | `/sessions` | list sessions joined with their type name, newest first, capped at 15 | done |
+| POST | `/sessions` | create a session | stub (logs and echoes the body, no insert yet) |
+| POST | `/workouts/generate` | generate a workout via the Anthropic API | planned |
+
+`GET /sessions` casts `session_date` to text in SQL, because `pg` would otherwise convert a `DATE` into a JS `Date` and the JSON would include a timezone.
+
+---
+
+## Design decisions
+
+| Decision | Reasoning |
+|---|---|
+| **Raw SQL over an ORM (e.g. Prisma)** | The project is small, and writing SQL directly builds a real understanding of the database layer. |
+| **PostgreSQL over SQLite** | Enforced types and a clear path to multi-user and concurrent writes. A small setup cost now beats a migration later. SQLite would have been fine for a pure single-user prototype. |
+| **Postgres in WSL, not Docker** | The Express server already runs in WSL, and a reviewer is unlikely to run the project locally. |
+| **Plain JavaScript, not TypeScript** | TypeScript pays off at scale; for a solo mid-build project it adds config without advancing the app. JSDoc annotations give some type documentation. |
+| **Session type as a lookup table** | A `session_types` table with a foreign key from `sessions` lets new types (and possibly sublabels) be added without a schema change, unlike a `CHECK` constraint or `ENUM`. |
+| **Auth deferred** | Single-user first to reduce complexity. |
+| **API key server-side only** | Frontend code is untrusted. `.env` holds secrets, `.gitignore` keeps it out of git, and `.env.example` documents the shape without exposing values. |
+
+---
+
+## Getting started
+
+> Setup steps will be finalized as the database and client wiring land. This is the intended flow.
+
+**Prerequisites:** Node.js (via nvm), PostgreSQL, npm.
+
+```bash
+# clone
+git clone <repo-url>
+cd boxing-tracker
+
+# server
+cd server
+npm install
+cp .env.example .env     # then fill in values
+npm run dev              # check the scripts in package.json
+
+# client (second terminal)
+cd client
+npm install
+npm run dev
+```
+
+**Environment variables** (see `server/.env.example` once added): database connection details, and `ANTHROPIC_API_KEY` once the AI feature is built. Never commit `.env`.
+
+---
+
+## Roadmap
+
+**Done**
+- [x] Project scaffolding (Vite client, Express server, Git, GitHub)
+- [x] Basic Express routes tested with REST Client
+- [x] Initial `sessions` schema designed
+- [x] `schema.sql` and database connection from Express (`pg` Pool via `DATABASE_URL`)
+- [x] `GET /sessions` backed by Postgres
+
+**Core build**
+- [ ] `POST /sessions` backed by Postgres (route exists as a stub)
+- [ ] `GET /session-types`
+- [ ] Session logger form in React
+- [ ] Session history view in React
+- [ ] AI workout generator (server route + UI)
+- [ ] Deployment (Vercel + Render)
+
+---
+
+## TODO: future features and how to implement them
+
+These are **gated**: nothing here starts until the three core features work end-to-end. Each entry has a rough approach and the questions to answer *before* writing code, so the decision stays yours.
+
+### 1. Edit and delete sessions
+- **Why:** a logger you can't correct is frustrating, and it completes the CRUD set.
+- **Approach:** add `PUT /sessions/:id` and `DELETE /sessions/:id`. Use route params for the id and parameterized queries (`$1`, `$2`) for every value. On the client, reuse the logger form pre-filled for editing.
+- **Decide first:** what status code and body should a delete of a nonexistent id return? Should delete be permanent or a soft delete flag?
+
+### 2. Filtering, sorting, and pagination on history
+- **Why:** history gets long fast.
+- **Approach:** accept query params like `?type=boxing&from=2026-10-01&to=2026-10-31&limit=20&offset=0` on `GET /sessions`. Build the `WHERE` clause conditionally while keeping values parameterized. Add `ORDER BY date DESC`.
+- **Decide first:** offset pagination vs. cursor pagination, and which one holds up as the table grows? Would an index on `date` help?
+
+### 3. Richer session detail (rounds, drills, intensity)
+- **Why:** "60 minutes, boxing" is thin. Rounds, drills, and a perceived-effort score make the data far more useful, and give the AI generator better context.
+- **Approach:** add a second table (e.g. `session_entries`) with a foreign key to `sessions`, one row per round or drill. Fetch with a `JOIN` or a second query.
+- **Decide first:** one-to-many vs. a JSON column on `sessions`? What does each cost when you later want to query "total rounds of pad work this month"?
+
+### 4. Data visualization / stats dashboard
+- **Why:** turns logged data into something motivating (weekly volume, streaks, sessions by type).
+- **Approach:** add aggregate endpoints using SQL (`GROUP BY`, `DATE_TRUNC('week', date)`, `SUM(duration_minutes)`), and render with a small chart library such as Recharts on the client.
+- **Decide first:** compute aggregates in SQL or in JavaScript? Why is SQL usually the better place?
+
+### 5. Smarter AI generation
+- **Why:** a generic workout is less useful than one based on your history.
+- **Approach:** have the server read recent sessions, summarize them, and include that summary in the prompt sent to the Anthropic API. Ask for structured output (e.g. JSON with rounds and drills) so the client can render it reliably. Rate limit the generate route (see item 8) so a bug can't burn your API budget.
+- **Decide first:** how much history is enough context without bloating the prompt? What happens when the API call fails or returns malformed output?
+
+### 6. Authentication and multi-user support
+- **Why:** needed before real users can have separate data.
+- **Approach:** add a `users` table and a `user_id` foreign key on `sessions` (the migration cost you already weighed). Hash passwords with bcrypt, then pick sessions or JWT. Scope every query with `WHERE user_id = $1`.
+- **Decide first:** sessions vs. JWT, and why? Where does the token live on the client, and what are the security tradeoffs of each place?
+
+### 7. PWA support
+- **Why:** installable on a phone and usable at the gym, even with poor signal.
+- **Approach:** add a web app manifest and a service worker (the Vite PWA plugin handles most of the wiring). Cache the app shell, and consider queuing session logs offline and syncing when back online.
+- **Decide first:** what should work offline, and how do you handle sync conflicts?
+
+### 8. Caching, idempotency, and rate limiting
+- **Why:** these protect the API as it grows. Caching saves repeated work, idempotency stops a retried request from creating a duplicate, and rate limiting stops abuse or a client bug from running up cost (especially on the Anthropic call).
+- **Caching approach:** start with HTTP caching headers (`Cache-Control`, `ETag`) on read-only routes like `GET /session-types`, which rarely changes. For `GET /sessions`, an in-memory cache that is cleared on every write is enough at this scale. Redis only if you ever run more than one server instance.
+- **Idempotency approach:** the client generates a unique key per submit and sends it as an `Idempotency-Key` header on `POST /sessions`. Store the key (e.g. a unique column or small table) and return the original response if the same key arrives again. This protects against double-clicks and flaky-network retries.
+- **Rate limiting approach:** middleware such as `express-rate-limit`, with a strict limit on `POST /workouts/generate` and a looser one on the other routes. Return `429` with a `Retry-After` header.
+- **Decide first:** what is safe to cache, and what invalidates it? How long should an idempotency key live? Is a per-IP limit meaningful for a single-user app, and does an in-memory counter survive a restart or a second instance?
+
+### 9. Quality and polish
+- **Input validation** on the server (reject bad dates, negative durations) and matching client-side checks.
+- **Error handling middleware** in Express so failures return consistent JSON.
+- **Automated tests** (e.g. Vitest or Jest with Supertest for routes) once the API stabilizes.
+- **JSDoc annotations** on route handlers and utilities.
+- **Mobile-friendly layout** and accessibility pass.
+
+---
+
+## What I learned building this
+
+- JavaScript's async model (Promises, async/await) is the core conceptual shift coming from C, Python, and Java.
+- Frontend code is untrusted territory; secrets belong on the server.
+- Defensibility over completeness: a working app I can fully explain beats a polished one I can't.
+
+---
+
+## License
+
+TBD.
