@@ -47,24 +47,30 @@ app.get("/sessions", async (req, res) => {
 
 app.post("/sessions", async (req, res) => {
   try {
-    console.log(req.body);
     const { session_date, session_type, duration_in_mins, notes } = req.body;
 
-    console.log(session_type);
-
-    const session_type_id = await pool.query(
-      `select 
-        id 
-      from 
-        session_types
-      where 
-        $1 = session_types.name`,
-      [session_type],
+    const session = await pool.query(
+      `insert into
+        sessions (session_date, session_type_id, duration_in_mins, notes)
+      values 
+        ($1, (select id from session_types where session_types.name = $2), $3, $4)
+      returning
+        id, cast(session_date as text), (select name from session_types where session_types.name = $2), duration_in_mins, notes`,
+      [session_date, session_type, duration_in_mins, notes],
     );
 
-    console.log(session_type_id.rows[0].id);
+    res.status(201).json(session.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: `Request didn't go through` });
+    const badType = err.code == 23502 && err.column == "session_type_id";
+    const badDuration =
+      err.code == 23514 && err.constraint == "sessions_duration_in_mins_check";
+
+    if (badDuration) {
+      res.status(400).json({ error: `Duration cannot be 0` });
+    } else if (badType) {
+      res.status(400).json({ error: `Invalid session type` });
+    } else {
+      res.status(500).json({ error: `Request didn't go through` });
+    }
   }
 });

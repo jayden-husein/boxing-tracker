@@ -9,6 +9,6 @@ Connection: close
 {
   "session_date": "2007-07-27",
   "session_type": "Muay Thai",
-  "duration_in_mins": 60,
+  "duration_in_mins": 0,
   "notes": "bag work"
 }
