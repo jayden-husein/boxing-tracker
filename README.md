@@ -2,7 +2,7 @@
 
 A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
 
-> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions` and `POST /sessions` are done. The client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
+> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions`, `POST /sessions`, and `GET /session-types` are done. The client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
 
 ---
 
@@ -85,7 +85,7 @@ No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding
 
 | Method | Route | Purpose | Status |
 |---|---|---|---|
-| GET | `/session-types` | list available session types (for the logger's dropdown) | planned |
+| GET | `/session-types` | list available session types (`id` and `name`, ordered by `id`; for the logger's dropdown) | done |
 | GET | `/sessions` | list sessions joined with their type name, newest first, capped at 15 | done |
 | POST | `/sessions` | create a session; returns `201` with the created row | done |
 | POST | `/workouts/generate` | generate a workout via the Anthropic API | planned |
@@ -137,7 +137,7 @@ psql -d boxing_tracker -f server/schema.sql
 cd server
 npm install
 cp .env.example .env     # then set DATABASE_URL (below)
-node server.js           # no dev script yet; runs on port 3000
+npm run dev              # node --watch: restarts on save; runs on port 3000
 npm run seed             # optional: WARNING deletes ALL sessions, then inserts test rows
 
 # client (second terminal)
@@ -162,8 +162,9 @@ npm run dev
 - [x] Seed script for testing (`npm run seed`)
 - [x] ESLint config
 
+- [x] `GET /session-types` backed by Postgres
+
 **Core build**
-- [ ] `GET /session-types`
 - [ ] Session logger form in React
 - [ ] Session history view in React
 - [ ] AI workout generator (server route + UI)

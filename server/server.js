@@ -9,14 +9,6 @@ require("dotenv").config();
 const { Pool } = require("pg");
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-app.listen(PORT, (err) => {
-  if (err) {
-    console.error("failed to start:", err.message);
-    process.exit(1);
-  }
-  console.log("listening on 3000");
-});
-
 app.get("/sessions", async (req, res) => {
   try {
     // important to note that u have to cast the date as text otherwise pg will convert it into js date which includes timezone
@@ -38,7 +30,7 @@ app.get("/sessions", async (req, res) => {
       limit
         15`,
     );
-    res.json(result.rows);
+    res.status(200).json(result.rows);
   } catch (err) {
     res.status(500).json({ error: `Couldn't load session` });
     console.error(err);
@@ -82,4 +74,28 @@ app.post("/sessions", async (req, res) => {
       res.status(500).json({ error: `Request didn't go through` });
     }
   }
+});
+
+app.get("/session-types", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      select 
+        id, name
+      from 
+        session_types
+      order by
+        id`);
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `Error getting types` });
+  }
+});
+
+app.listen(PORT, (err) => {
+  if (err) {
+    console.error("failed to start:", err.message);
+    process.exit(1);
+  }
+  console.log("listening on 3000");
 });

@@ -12,3 +12,6 @@ Connection: close
   "duration_in_mins": 99999999999,
   "notes": "bag work"
 }
+
+###
+GET http://localhost:3000/session-types
