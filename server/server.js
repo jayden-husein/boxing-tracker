@@ -45,6 +45,15 @@ app.get("/sessions", async (req, res) => {
   }
 });
 
+// error messages for the post route
+const errorMessages = {
+  session_type_id: `Invalid session type`,
+  session_date: `Date is required`,
+  duration_in_mins: `Duration is required`,
+  sessions_duration_in_mins_check: `Duration must be greater than 0`,
+  22007: `Invalid date`
+};
+
 app.post("/sessions", async (req, res) => {
   try {
     const { session_date, session_type, duration_in_mins, notes } = req.body;
@@ -61,15 +70,13 @@ app.post("/sessions", async (req, res) => {
 
     res.status(201).json(session.rows[0]);
   } catch (err) {
-    const badType = err.code == 23502 && err.column == "session_type_id";
-    const badDuration =
-      err.code == 23514 && err.constraint == "sessions_duration_in_mins_check";
+    console.error(err);
+    const message = errorMessages[err.column || err.constraint || err.code];
 
-    if (badDuration) {
-      res.status(400).json({ error: `Duration cannot be 0` });
-    } else if (badType) {
-      res.status(400).json({ error: `Invalid session type` });
+    if (message) {
+      res.status(400).json({ error: message });
     } else {
+      // console.error(err)
       res.status(500).json({ error: `Request didn't go through` });
     }
   }
