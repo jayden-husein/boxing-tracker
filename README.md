@@ -2,7 +2,7 @@
 
 A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
 
-> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions` are done. `POST /sessions` is a stub, and the client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
+> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions` and `POST /sessions` are done. The client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
 
 ---
 
@@ -48,6 +48,12 @@ The browser never talks to the database or to Anthropic directly. The Anthropic 
 boxing-tracker/
 ├── client/          # React app (Vite)
 ├── server/          # Express API
+│   ├── server.js        # routes and pg Pool
+│   ├── schema.sql       # tables + seeded session types
+│   ├── seed.sql         # test data (truncates sessions)
+│   ├── requests.http    # REST Client requests
+│   └── .env.example
+├── eslint.config.mjs    # root ESLint config
 ├── .gitignore       # node_modules/, .env
 └── README.md
 ```
@@ -81,10 +87,12 @@ No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding
 |---|---|---|---|
 | GET | `/session-types` | list available session types (for the logger's dropdown) | planned |
 | GET | `/sessions` | list sessions joined with their type name, newest first, capped at 15 | done |
-| POST | `/sessions` | create a session | stub (logs and echoes the body, no insert yet) |
+| POST | `/sessions` | create a session; returns `201` with the created row | done |
 | POST | `/workouts/generate` | generate a workout via the Anthropic API | planned |
 
 `GET /sessions` casts `session_date` to text in SQL, because `pg` would otherwise convert a `DATE` into a JS `Date` and the JSON would include a timezone.
+
+`POST /sessions` takes `session_date`, `session_type` (the type's name, e.g. `"Muay Thai"`), `duration_in_mins`, and `notes`. The type name is resolved to its id with a subquery inside the `INSERT`, so the client never needs to know ids. Database errors are mapped to friendly messages through an `errorMessages` lookup keyed on the error's column, constraint, or code (null `session_type_id`, missing date or duration, the `duration_in_mins > 0` check, and Postgres code `22007` for an invalid date), and return `400`. Anything unrecognized returns `500`.
 
 ---
 
@@ -117,7 +125,8 @@ cd boxing-tracker
 cd server
 npm install
 cp .env.example .env     # then fill in values
-npm run dev              # check the scripts in package.json
+node server.js           # no dev script yet; runs on port 3000
+npm run seed             # optional: load test data (truncates sessions)
 
 # client (second terminal)
 cd client
@@ -137,9 +146,11 @@ npm run dev
 - [x] Initial `sessions` schema designed
 - [x] `schema.sql` and database connection from Express (`pg` Pool via `DATABASE_URL`)
 - [x] `GET /sessions` backed by Postgres
+- [x] `POST /sessions` backed by Postgres, with DB errors mapped to `400` messages
+- [x] Seed script for testing (`npm run seed`)
+- [x] ESLint config
 
 **Core build**
-- [ ] `POST /sessions` backed by Postgres (route exists as a stub)
 - [ ] `GET /session-types`
 - [ ] Session logger form in React
 - [ ] Session history view in React
@@ -195,7 +206,7 @@ These are **gated**: nothing here starts until the three core features work end-
 - **Decide first:** what is safe to cache, and what invalidates it? How long should an idempotency key live? Is a per-IP limit meaningful for a single-user app, and does an in-memory counter survive a restart or a second instance?
 
 ### 9. Quality and polish
-- **Input validation** on the server (reject bad dates, negative durations) and matching client-side checks.
+- **Input validation** on the server and matching client-side checks. Partly covered already: `POST /sessions` relies on database constraints and maps their errors to `400`s (bad dates, non-positive durations), but there is no validation in the route itself.
 - **Error handling middleware** in Express so failures return consistent JSON.
 - **Automated tests** (e.g. Vitest or Jest with Supertest for routes) once the API stabilizes.
 - **JSDoc annotations** on route handlers and utilities.
