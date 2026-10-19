@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "psql -d boxing_tracker -f seed.sql",
-    "dev": "npm --watch server.js"
+    "dev": "node --watch server.js"
   },
   "keywords": [],
   "author": "",
