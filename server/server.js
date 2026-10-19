@@ -51,7 +51,10 @@ const errorMessages = {
   session_date: `Date is required`,
   duration_in_mins: `Duration is required`,
   sessions_duration_in_mins_check: `Duration must be greater than 0`,
-  22007: `Invalid date`
+  22007: `Invalid date`,
+  22008: `Invalid date`,
+  "22P02": `Invalid duration entry`,
+  22003: `Duration is too long`,
 };
 
 app.post("/sessions", async (req, res) => {
@@ -76,7 +79,6 @@ app.post("/sessions", async (req, res) => {
     if (message) {
       res.status(400).json({ error: message });
     } else {
-      // console.error(err)
       res.status(500).json({ error: `Request didn't go through` });
     }
   }
