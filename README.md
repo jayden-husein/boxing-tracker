@@ -121,10 +121,15 @@ No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding
 git clone <repo-url>
 cd boxing-tracker
 
+# database (Postgres runs in WSL, not Docker; it doesn't start automatically)
+sudo service postgresql start
+createdb boxing_tracker                       # one time
+psql -d boxing_tracker -f server/schema.sql   # one time: creates tables, seeds Boxing and Muay Thai
+
 # server
 cd server
 npm install
-cp .env.example .env     # then fill in values
+cp .env.example .env     # then set DATABASE_URL (e.g. postgresql://user:password@localhost:5432/boxing_tracker)
 node server.js           # no dev script yet; runs on port 3000
 npm run seed             # optional: load test data (truncates sessions)
 
@@ -134,7 +139,7 @@ npm install
 npm run dev
 ```
 
-**Environment variables** (see `server/.env.example` once added): database connection details, and `ANTHROPIC_API_KEY` once the AI feature is built. Never commit `.env`.
+**Environment variables** (see `server/.env.example`): `DATABASE_URL` for the Postgres connection, and `ANTHROPIC_API_KEY` once the AI feature is built. Never commit `.env`.
 
 ---
 
