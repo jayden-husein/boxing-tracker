@@ -34,7 +34,7 @@ The app is **single-user** for now. Auth is deliberately deferred (see [Design d
 
 ## Architecture
 
-```
+```text
 React client  ──HTTP──▶  Express server  ──SQL──▶  PostgreSQL
                               │
                               └──HTTPS──▶  Anthropic API
@@ -44,7 +44,7 @@ The browser never talks to the database or to Anthropic directly. The Anthropic 
 
 ### Project layout
 
-```
+```text
 boxing-tracker/
 ├── client/          # React app (Vite)
 ├── server/          # Express API

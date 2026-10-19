@@ -4,16 +4,20 @@ import reactPlugin from "@eslint-react/eslint-plugin";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import css from "@eslint/css";
-import { defineConfig } from "eslint/config";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
+  globalIgnores(["graphify-out/**", "**/package-lock.json"]),
   {
     files: ["**/*.{js,mjs,cjs,jsx}"],
     plugins: { js },
     extends: ["js/recommended"],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
-  reactPlugin.configs.recommended,
+  {
+    files: ["**/*.{js,mjs,cjs,jsx}"],
+    ...reactPlugin.configs.recommended,
+  },
   {
     files: ["**/*.json"],
     plugins: { json },
