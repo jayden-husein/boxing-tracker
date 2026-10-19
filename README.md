@@ -92,7 +92,7 @@ No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding
 
 `GET /sessions` casts `session_date` to text in SQL, because `pg` would otherwise convert a `DATE` into a JS `Date` and the JSON would include a timezone.
 
-`POST /sessions` takes `session_date`, `session_type` (the type's name, e.g. `"Muay Thai"`), `duration_in_mins`, and `notes`. The type name is resolved to its id with a subquery inside the `INSERT`, so the client never needs to know ids. Database errors are mapped to friendly messages through an `errorMessages` lookup keyed on the error's column, constraint, or code (null `session_type_id`, missing date or duration, the `duration_in_mins > 0` check, and Postgres code `22007` for an invalid date), and return `400`. Anything unrecognized returns `500`.
+`POST /sessions` takes `session_date`, `session_type` (the type's name, e.g. `"Muay Thai"`), `duration_in_mins`, and `notes`. The type name is resolved to its id with a subquery inside the `INSERT`, so the client never needs to know ids. Database errors are mapped to friendly messages through an `errorMessages` lookup keyed on the error's column, constraint, or code (null `session_type_id`, missing date or duration, the `duration_in_mins > 0` check, Postgres codes `22007` and `22008` for an invalid date, `22P02` for a non-numeric duration, and `22003` for a duration too large for an integer), and return `400`. Anything unrecognized returns `500`.
 
 ---
 
@@ -123,15 +123,22 @@ cd boxing-tracker
 
 # database (Postgres runs in WSL, not Docker; it doesn't start automatically)
 sudo service postgresql start
-createdb boxing_tracker                       # one time
-psql -d boxing_tracker -f server/schema.sql   # one time: creates tables, seeds Boxing and Muay Thai
+
+# one time: a fresh Postgres only has the `postgres` role, so create a role named
+# after your Linux user (so `psql` can log in without a password) and a database it owns
+sudo -u postgres psql -c "create role $USER with login password 'choose-a-password'"
+sudo -u postgres createdb -O $USER boxing_tracker
+
+# one time: creates tables and seeds Boxing and Muay Thai.
+# Don't rerun it: `create table` will error on the existing tables.
+psql -d boxing_tracker -f server/schema.sql
 
 # server
 cd server
 npm install
-cp .env.example .env     # then set DATABASE_URL (e.g. postgresql://user:password@localhost:5432/boxing_tracker)
+cp .env.example .env     # then set DATABASE_URL (below)
 node server.js           # no dev script yet; runs on port 3000
-npm run seed             # optional: load test data (truncates sessions)
+npm run seed             # optional: WARNING deletes ALL sessions, then inserts test rows
 
 # client (second terminal)
 cd client
@@ -139,7 +146,7 @@ npm install
 npm run dev
 ```
 
-**Environment variables** (see `server/.env.example`): `DATABASE_URL` for the Postgres connection, and `ANTHROPIC_API_KEY` once the AI feature is built. Never commit `.env`.
+**Environment variables** (see `server/.env.example`): `DATABASE_URL` for the Postgres connection, using the role and password you created above: `postgresql://<your-linux-username>:<choose-a-password>@localhost:5432/boxing_tracker`. `ANTHROPIC_API_KEY` is added once the AI feature is built. Never commit `.env`.
 
 ---
 
@@ -175,8 +182,8 @@ These are **gated**: nothing here starts until the three core features work end-
 
 ### 2. Filtering, sorting, and pagination on history
 - **Why:** history gets long fast.
-- **Approach:** accept query params like `?type=boxing&from=2026-10-01&to=2026-10-31&limit=20&offset=0` on `GET /sessions`. Build the `WHERE` clause conditionally while keeping values parameterized. Add `ORDER BY date DESC`.
-- **Decide first:** offset pagination vs. cursor pagination, and which one holds up as the table grows? Would an index on `date` help?
+- **Approach:** accept query params like `?type=boxing&from=2026-10-01&to=2026-10-31&limit=20&offset=0` on `GET /sessions`. Build the `WHERE` clause conditionally while keeping values parameterized. Add `ORDER BY session_date DESC`.
+- **Decide first:** offset pagination vs. cursor pagination, and which one holds up as the table grows? Would an index on `session_date` help?
 
 ### 3. Richer session detail (rounds, drills, intensity)
 - **Why:** "60 minutes, boxing" is thin. Rounds, drills, and a perceived-effort score make the data far more useful, and give the AI generator better context.
@@ -185,7 +192,7 @@ These are **gated**: nothing here starts until the three core features work end-
 
 ### 4. Data visualization / stats dashboard
 - **Why:** turns logged data into something motivating (weekly volume, streaks, sessions by type).
-- **Approach:** add aggregate endpoints using SQL (`GROUP BY`, `DATE_TRUNC('week', date)`, `SUM(duration_minutes)`), and render with a small chart library such as Recharts on the client.
+- **Approach:** add aggregate endpoints using SQL (`GROUP BY`, `DATE_TRUNC('week', session_date)`, `SUM(duration_in_mins)`), and render with a small chart library such as Recharts on the client.
 - **Decide first:** compute aggregates in SQL or in JavaScript? Why is SQL usually the better place?
 
 ### 5. Smarter AI generation

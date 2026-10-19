@@ -13,8 +13,8 @@ Rules:
 
 This is a learning project. The owner writes all application code personally.
 
-- You may edit README.md only. Never edit, create, or delete anything else.
-- Do not write or suggest code for client/ or server/. If asked, decline and ask a guiding question instead.
+- You may edit README.md only. Never edit, create, or delete anything else (CLAUDE.md changes only when the owner explicitly asks).
+- Never write or edit code in client/ or server/. You may suggest approaches and snippets in chat for the owner to write themselves.
 - To update the README, read the code (git diff, schema, routes) and look at the graphify. Describe what is actually built. Do not document features that aren't implemented yet.
 - Keep the README's "Roadmap" checklist accurate: check items only when the code exists.
 - Preserve the existing README structure and the owner's design-decision reasoning.
