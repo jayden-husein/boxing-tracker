@@ -1,9 +1,47 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
+// helper funcs
+import durationFormatter from "./helpers/durationFormatter";
+import dateFormatter from "./helpers/dateFormatter";
+
 const base = import.meta.env.VITE_API_URL;
 
 const configError = base ? null : `VITE_API_URL is ${base}, check .env`;
+
+function SessionRow({ session }) {
+  return (
+    <tr>
+      <td>{dateFormatter(session.session_date)}</td>
+      <td>{session.session_type}</td>
+      <td>{durationFormatter(session.duration_in_mins)}</td>
+      <td>{session.notes}</td>
+    </tr>
+  );
+}
+
+function SessionList({ sessions }) {
+  return (
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th>Session Date</th>
+            <th>Session Type</th>
+            <th>Duration</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sessions.map((session) => (
+            <SessionRow key={session.id} session={session} />
+          ))}
+        </tbody>
+      </table>
+      {sessions.length === 0 && <p>No sessions logged</p>}
+    </>
+  );
+}
 
 function App() {
   const [sessions, setSessions] = useState([]);
@@ -37,7 +75,7 @@ function App() {
 
   return (
     <>
-      <pre>{JSON.stringify(sessions)}</pre>
+      <SessionList sessions={sessions} />
       <p>{error ? "Couldn't load sessions :(" : null}</p>
     </>
   );
