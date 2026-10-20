@@ -7,9 +7,9 @@ Content-Type: application/json
 Connection: close
 
 {
-  "session_date": "2026-02-26",
-  "session_type": "Muay Thai",
-  "duration_in_mins": 99999999999,
+  "session_date": "2016-02-26",
+  "session_type": "Boxing",
+  "duration_in_mins": 50,
   "notes": "bag work"
 }
 

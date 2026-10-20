@@ -1,10 +1,15 @@
 const express = require("express");
+const cors = require("cors");
 const app = express();
-app.use(express.json());
-
-const PORT = 3000;
 
 require("dotenv").config();
+
+app.use(express.json());
+process.env.ORIGIN
+  ? app.use(cors({ origin: process.env.ORIGIN }))
+  : (console.error("ORIGIN is not set"), process.exit(1));
+
+const PORT = process.env.PORT || 3000;
 
 const { Pool } = require("pg");
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -59,7 +64,7 @@ app.post("/sessions", async (req, res) => {
       values 
         ($1, (select id from session_types where session_types.name = $2), $3, $4)
       returning
-        id, cast(session_date as text), (select name from session_types where session_types.name = $2), duration_in_mins, notes`,
+        id, cast(session_date as text), (select name from session_types where session_types.name = $2) as session_type, duration_in_mins, notes`,
       [session_date, session_type, duration_in_mins, notes],
     );
 
@@ -97,5 +102,5 @@ app.listen(PORT, (err) => {
     console.error("failed to start:", err.message);
     process.exit(1);
   }
-  console.log("listening on 3000");
+  console.log(`listening on ${PORT}`);
 });
