@@ -174,7 +174,12 @@ Client (`client/.env.example`):
 | `boxing-tracker-api` | Node web service (free) | runs `node server.js` from `server/`; Render sets `PORT`; `ORIGIN` is the client's URL; `DATABASE_URL` is entered when the Blueprint is applied |
 | `boxing-tracker-client` | static site | builds `client/` and serves `dist/`; `VITE_API_URL` is the API's URL |
 
-`ORIGIN` and `VITE_API_URL` are hardcoded `https://<name>.onrender.com` URLs, because a Blueprint can only reference another service's host, not its full `https://` URL. If Render adds a suffix to a name that is already taken, update both URLs in `render.yaml`.
+`ORIGIN` and `VITE_API_URL` are hardcoded in `render.yaml`, because a Blueprint can only reference another service's host, not its full `https://` URL. Render added a random suffix to both service names, so the live URLs are:
+
+- Client: https://boxing-tracker-client-b2wn.onrender.com
+- API: https://boxing-tracker-api-p2q1.onrender.com
+
+If either service is recreated, check its URL in the Render dashboard and update `render.yaml` to match. `VITE_API_URL` is baked into the client at build time, so the static site must rebuild after it changes.
 
 1. Create a Neon project and copy its connection string (`postgresql://...neon.tech/neondb?sslmode=require`). No code change is needed: `pg` reads `sslmode=require` from the string and enables SSL, which Neon requires.
 2. One time: create the tables (`schema.sql` errors if it runs twice):
@@ -208,7 +213,7 @@ Free-tier caveats: the free web service sleeps when idle, so the first request a
 
 **Core build**
 - [ ] AI workout generator (server route + UI)
-- [ ] Deployment (Render Blueprint written in `render.yaml`, not yet deployed)
+- [x] Deployment (Render Blueprint in `render.yaml` for client and API, Neon for Postgres)
 
 ---
 
