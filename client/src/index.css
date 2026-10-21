@@ -17,6 +17,10 @@
   color-scheme: dark;
 }
 
+h1 {
+  text-align: center;
+}
+
 * {
   box-sizing: border-box;
 }

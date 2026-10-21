@@ -230,6 +230,7 @@ function App() {
 
   return (
     <>
+      <h1>Boxing/Muay Thai Tracker by Jayden Husein</h1>
       <SessionForm base={base} onCreated={handleCreated} />
       <SessionList sessions={sessions} />
       <p>{error ? "Couldn't load sessions :(" : null}</p>
