@@ -28,7 +28,7 @@ The app is **single-user** for now. Auth is deliberately deferred (see [Design d
 | AI | Anthropic API, called from the server only |
 | Dev environment | Windows 11, WSL Ubuntu, VS Code, nvm, npm |
 | API testing | REST Client (`.http` files) |
-| Planned hosting | Vercel (frontend), Render (backend + database) |
+| Hosting | Render (static site, web service, Postgres), defined in `render.yaml` |
 
 ---
 
@@ -57,6 +57,7 @@ boxing-tracker/
 │   ├── requests.http    # REST Client requests
 │   └── .env.example
 ├── eslint.config.mjs    # root ESLint config
+├── render.yaml      # Render Blueprint (client, server, database)
 ├── .gitignore       # node_modules/, .env
 └── README.md
 ```
@@ -164,6 +165,30 @@ Client (`client/.env.example`):
 
 ---
 
+## Deployment
+
+`render.yaml` is a [Render Blueprint](https://render.com/docs/blueprint-spec) that sets up all three pieces in one go:
+
+| Resource | Type | Notes |
+|---|---|---|
+| `boxing-tracker-db` | Postgres (free) | its connection string is passed to the API as `DATABASE_URL` automatically |
+| `boxing-tracker-api` | Node web service (free) | runs `node server.js` from `server/`; Render sets `PORT`; `ORIGIN` is the client's URL |
+| `boxing-tracker-client` | static site | builds `client/` and serves `dist/`; `VITE_API_URL` is the API's URL |
+
+`ORIGIN` and `VITE_API_URL` are hardcoded `https://<name>.onrender.com` URLs, because a Blueprint can only reference another service's host, not its full `https://` URL. If Render adds a suffix to a name that is already taken, update both URLs in `render.yaml`.
+
+1. Push `render.yaml` to GitHub.
+2. In the Render dashboard: **New → Blueprint**, pick this repo, and click **Apply**.
+3. One time: create the tables using the database's **External Database URL** (the Blueprint doesn't do this, because `schema.sql` errors if it runs twice):
+   ```bash
+   psql "<external-database-url>" -f server/schema.sql
+   ```
+   Optionally seed it with `psql "<external-database-url>" -f server/seed.sql`. Don't use `npm run seed` for this, because it targets the local database.
+
+Free-tier caveats: Render deletes free Postgres databases after 30 days, and the free web service sleeps when idle, so the first request after a while takes about 30 seconds.
+
+---
+
 ## Roadmap
 
 **Done**
@@ -183,7 +208,7 @@ Client (`client/.env.example`):
 
 **Core build**
 - [ ] AI workout generator (server route + UI)
-- [ ] Deployment (Vercel + Render)
+- [ ] Deployment (Render Blueprint written in `render.yaml`, not yet deployed)
 
 ---
 
