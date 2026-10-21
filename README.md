@@ -2,7 +2,7 @@
 
 A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
 
-> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions`, `POST /sessions`, and `GET /session-types` are done, and the client shows a bare-bones session history table. The session logger form and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
+> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions`, `POST /sessions`, and `GET /session-types` are done, and the client has a session logger form and a bare-bones session history table. The AI feature is not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
 
 ---
 
@@ -47,7 +47,7 @@ The browser never talks to the database or to Anthropic directly. The Anthropic 
 ```text
 boxing-tracker/
 ├── client/          # React app (Vite)
-│   ├── src/App.jsx          # fetches and renders the session history table
+│   ├── src/App.jsx          # session logger form + session history table
 │   ├── src/helpers/         # dateFormatter, durationFormatter
 │   └── .env.example
 ├── server/          # Express API
@@ -179,8 +179,9 @@ Client (`client/.env.example`):
 - [x] CORS restricted to the client origin (`ORIGIN`)
 - [x] Session history view in React (bare-bones read-only table of the latest 15 sessions)
 
+- [x] Session logger form in React (type dropdown filled from `GET /session-types`, client-side checks, shows the server's error message on a `400`, and adds the new session to the history table without a refetch)
+
 **Core build**
-- [ ] Session logger form in React
 - [ ] AI workout generator (server route + UI)
 - [ ] Deployment (Vercel + Render)
 

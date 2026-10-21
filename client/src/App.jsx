@@ -232,7 +232,6 @@ function App() {
     <>
       <SessionForm base={base} onCreated={handleCreated} />
       <SessionList sessions={sessions} />
-      <SessionList sessions={sessions} />
       <p>{error ? "Couldn't load sessions :(" : null}</p>
     </>
   );
