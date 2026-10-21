@@ -2,7 +2,7 @@
 
 A full-stack training tracker for boxing and Muay Thai. Log your sessions, look back at your history, and (eventually) generate workouts with AI.
 
-> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions`, `POST /sessions`, and `GET /session-types` are done. The client and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
+> **Status:** in progress. Scaffolding, the Postgres schema, the database connection, and `GET /sessions`, `POST /sessions`, and `GET /session-types` are done, and the client shows a bare-bones session history table. The session logger form and AI feature are not started. The checklist under [Roadmap](#roadmap) shows what is real today versus planned.
 
 ---
 
@@ -47,6 +47,9 @@ The browser never talks to the database or to Anthropic directly. The Anthropic 
 ```text
 boxing-tracker/
 ├── client/          # React app (Vite)
+│   ├── src/App.jsx          # fetches and renders the session history table
+│   ├── src/helpers/         # dateFormatter, durationFormatter
+│   └── .env.example
 ├── server/          # Express API
 │   ├── server.js        # routes and pg Pool
 │   ├── schema.sql       # tables + seeded session types
@@ -87,7 +90,7 @@ No `user_id` yet, since the app is single-user. The tradeoff was weighed: adding
 |---|---|---|---|
 | GET | `/session-types` | list available session types (`id` and `name`, ordered by `id`; for the logger's dropdown) | done |
 | GET | `/sessions` | list sessions joined with their type name, newest first, capped at 15 | done |
-| POST | `/sessions` | create a session; returns `201` with the created row | done |
+| POST | `/sessions` | create a session; returns `201` with the created row (same shape as `GET /sessions`, including `session_type`) | done |
 | POST | `/workouts/generate` | generate a workout via the Anthropic API | planned |
 
 `GET /sessions` casts `session_date` to text in SQL, because `pg` would otherwise convert a `DATE` into a JS `Date` and the JSON would include a timezone.
@@ -136,17 +139,28 @@ psql -d boxing_tracker -f server/schema.sql
 # server
 cd server
 npm install
-cp .env.example .env     # then set DATABASE_URL (below)
-npm run dev              # node --watch: restarts on save; runs on port 3000
+cp .env.example .env     # then set DATABASE_URL and ORIGIN (below)
+npm run dev              # node --watch: restarts on save; port 3000 unless PORT is set
 npm run seed             # optional: WARNING deletes ALL sessions, then inserts test rows
 
 # client (second terminal)
 cd client
 npm install
+cp .env.example .env     # then set VITE_API_URL (below)
 npm run dev
 ```
 
-**Environment variables** (see `server/.env.example`): `DATABASE_URL` for the Postgres connection, using the role and password you created above: `postgresql://<your-linux-username>:<choose-a-password>@localhost:5432/boxing_tracker`. `ANTHROPIC_API_KEY` is added once the AI feature is built. Never commit `.env`.
+**Environment variables**
+
+Server (`server/.env.example`):
+- `DATABASE_URL`: the Postgres connection, using the role and password you created above: `postgresql://<your-linux-username>:<choose-a-password>@localhost:5432/boxing_tracker`.
+- `ORIGIN`: the client's URL (e.g. `http://localhost:5173`). Required: it is the only origin CORS allows, and the server exits at startup if it is unset.
+- `PORT`: optional, defaults to `3000`.
+
+Client (`client/.env.example`):
+- `VITE_API_URL`: the server's URL (e.g. `http://localhost:3000`). If unset, the page shows a config error instead of loading.
+
+`ANTHROPIC_API_KEY` is added once the AI feature is built. Never commit `.env`.
 
 ---
 
@@ -161,12 +175,12 @@ npm run dev
 - [x] `POST /sessions` backed by Postgres, with DB errors mapped to `400` messages
 - [x] Seed script for testing (`npm run seed`)
 - [x] ESLint config
-
 - [x] `GET /session-types` backed by Postgres
+- [x] CORS restricted to the client origin (`ORIGIN`)
+- [x] Session history view in React (bare-bones read-only table of the latest 15 sessions)
 
 **Core build**
 - [ ] Session logger form in React
-- [ ] Session history view in React
 - [ ] AI workout generator (server route + UI)
 - [ ] Deployment (Vercel + Render)
 
